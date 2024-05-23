@@ -99,6 +99,7 @@ class OnPolicyAlgorithm(BaseAlgorithm):
             supported_action_spaces=supported_action_spaces,
         )
 
+        self.action_mask = None
         self.n_steps = n_steps
         self.gamma = gamma
         self.gae_lambda = gae_lambda
@@ -176,7 +177,7 @@ class OnPolicyAlgorithm(BaseAlgorithm):
             with th.no_grad():
                 # Convert to pytorch tensor or to TensorDict
                 obs_tensor = obs_as_tensor(self._last_obs, self.device)
-                actions, values, log_probs = self.policy(obs_tensor)
+                actions, values, log_probs = self.policy(obs_tensor, action_mask=self.action_mask)
             actions = actions.cpu().numpy()
 
             # Rescale and perform action
@@ -202,6 +203,7 @@ class OnPolicyAlgorithm(BaseAlgorithm):
                 return False
 
             self._update_info_buffer(infos, dones)
+            self.action_mask = [i["action_mask"] for i in infos]
             n_steps += 1
 
             if isinstance(self.action_space, spaces.Discrete):

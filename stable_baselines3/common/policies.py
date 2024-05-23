@@ -633,16 +633,18 @@ class ActorCriticPolicy(BasePolicy):
         # Setup optimizer with initial learning rate
         self.optimizer = self.optimizer_class(self.parameters(), lr=lr_schedule(1), **self.optimizer_kwargs)  # type: ignore[call-arg]
 
-    def forward(self, obs: th.Tensor, deterministic: bool = False) -> Tuple[th.Tensor, th.Tensor, th.Tensor]:
+    def forward(self, obs: th.Tensor, deterministic: bool = False, action_mask: th.Tensor = None) -> Tuple[th.Tensor, th.Tensor, th.Tensor]:
         """
         Forward pass in all the networks (actor and critic)
 
         :param obs: Observation
         :param deterministic: Whether to sample or use deterministic actions
+        :param action_mask: (Optional) used when learning on PDDL, to disable probability impossible (masked) actions
         :return: action, value and log probability of the action
         """
         # Preprocess the observation if needed
         features = self.extract_features(obs)
+        pi_features, vf_features = None, None
         if self.share_features_extractor:
             latent_pi, latent_vf = self.mlp_extractor(features)
         else:
@@ -652,9 +654,17 @@ class ActorCriticPolicy(BasePolicy):
         # Evaluate the values for the given observations
         values = self.value_net(latent_vf)
         distribution = self._get_action_dist_from_latent(latent_pi)
+
+        if action_mask is not None and 0 not in [sum(agent) for agent in action_mask]:
+            if [0,0,0,0,0,0,0,0,0,0] in action_mask:
+                print("breakpoint")
+            action_mask = th.tensor(action_mask)
+            distribution.distribution.probs *= action_mask
+            distribution.distribution.probs = th.nn.functional.normalize(distribution.distribution.probs, p=1, dim=1)
         actions = distribution.get_actions(deterministic=deterministic)
         log_prob = distribution.log_prob(actions)
         actions = actions.reshape((-1, *self.action_space.shape))  # type: ignore[misc]
+
         return actions, values, log_prob
 
     def extract_features(  # type: ignore[override]
@@ -714,7 +724,13 @@ class ActorCriticPolicy(BasePolicy):
         :param deterministic: Whether to use stochastic or deterministic actions
         :return: Taken action according to the policy
         """
-        return self.get_distribution(observation).get_actions(deterministic=deterministic)
+        tmp =self.get_distribution(observation).get_actions(deterministic=deterministic)
+
+        f = open("D:\Projekty\STUDIA MAGISTERSKIE\MAGISTERKA\debug.txt", "w")
+        f.write(str(observation))
+        f.close()
+        return tmp
+
 
     def evaluate_actions(self, obs: PyTorchObs, actions: th.Tensor) -> Tuple[th.Tensor, th.Tensor, Optional[th.Tensor]]:
         """
@@ -738,6 +754,8 @@ class ActorCriticPolicy(BasePolicy):
         log_prob = distribution.log_prob(actions)
         values = self.value_net(latent_vf)
         entropy = distribution.entropy()
+
+
         return values, log_prob, entropy
 
     def get_distribution(self, obs: PyTorchObs) -> Distribution:
@@ -749,7 +767,13 @@ class ActorCriticPolicy(BasePolicy):
         """
         features = super().extract_features(obs, self.pi_features_extractor)
         latent_pi = self.mlp_extractor.forward_actor(features)
-        return self._get_action_dist_from_latent(latent_pi)
+        tmp = self._get_action_dist_from_latent(latent_pi)
+
+        f = open("D:\Projekty\STUDIA MAGISTERSKIE\MAGISTERKA\debug1.txt", "w")
+        f.write(str(tmp))
+        f.close()
+
+        return tmp
 
     def predict_values(self, obs: PyTorchObs) -> th.Tensor:
         """
