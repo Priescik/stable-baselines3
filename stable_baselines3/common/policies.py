@@ -656,11 +656,11 @@ class ActorCriticPolicy(BasePolicy):
         distribution = self._get_action_dist_from_latent(latent_pi)
 
         if action_mask is not None and 0 not in [sum(agent) for agent in action_mask]:
-            if [0,0,0,0,0,0,0,0,0,0] in action_mask:
-                print("breakpoint")
             action_mask = th.tensor(action_mask)
             distribution.distribution.probs *= action_mask
             distribution.distribution.probs = th.nn.functional.normalize(distribution.distribution.probs, p=1, dim=1)
+        else:
+            print("breakpoint - action_mask error in policies.py")
         actions = distribution.get_actions(deterministic=deterministic)
         log_prob = distribution.log_prob(actions)
         actions = actions.reshape((-1, *self.action_space.shape))  # type: ignore[misc]

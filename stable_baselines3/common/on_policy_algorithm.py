@@ -174,6 +174,9 @@ class OnPolicyAlgorithm(BaseAlgorithm):
                 # Sample a new noise matrix
                 self.policy.reset_noise(env.num_envs)
 
+            pre_infos = env.venv.venv.vec_envs[0].par_env.aec_env.infos
+            self.action_mask = [v["action_mask"] for k, v in pre_infos.items()]
+
             with th.no_grad():
                 # Convert to pytorch tensor or to TensorDict
                 obs_tensor = obs_as_tensor(self._last_obs, self.device)
@@ -203,7 +206,6 @@ class OnPolicyAlgorithm(BaseAlgorithm):
                 return False
 
             self._update_info_buffer(infos, dones)
-            self.action_mask = [i["action_mask"] for i in infos]
             n_steps += 1
 
             if isinstance(self.action_space, spaces.Discrete):
