@@ -334,6 +334,7 @@ class BasePolicy(BaseModel, ABC):
         state: Optional[Tuple[np.ndarray, ...]] = None,
         episode_start: Optional[np.ndarray] = None,
         deterministic: bool = False,
+        mask: List = None
     ) -> Tuple[np.ndarray, Optional[Tuple[np.ndarray, ...]]]:
         """
         Get the policy action from an observation (and optional hidden state).
@@ -365,7 +366,7 @@ class BasePolicy(BaseModel, ABC):
         obs_tensor, vectorized_env = self.obs_to_tensor(observation)
 
         with th.no_grad():
-            actions = self._predict(obs_tensor, deterministic=deterministic)
+            actions = self._predict(obs_tensor, deterministic=deterministic, mask=mask)
         # Convert to numpy, and reshape to the original action shape
         actions = actions.cpu().numpy().reshape((-1, *self.action_space.shape))  # type: ignore[misc]
 
@@ -661,7 +662,14 @@ class ActorCriticPolicy(BasePolicy):
             distribution.distribution.probs = th.nn.functional.normalize(distribution.distribution.probs, p=1, dim=1)
         else:
             print("breakpoint - action_mask error in policies.py")
-        actions = distribution.get_actions(deterministic=deterministic)
+        try:
+            actions = distribution.get_actions(deterministic=deterministic)
+        except RuntimeError:
+            for i, agent_probs in distribution.distribution.probs:
+                if sum(agent_probs) < 0:
+                    agent_probs += action_mask[i]
+            actions = distribution.get_actions(deterministic=deterministic)
+
         log_prob = distribution.log_prob(actions)
         actions = actions.reshape((-1, *self.action_space.shape))  # type: ignore[misc]
 
@@ -716,7 +724,7 @@ class ActorCriticPolicy(BasePolicy):
         else:
             raise ValueError("Invalid action distribution")
 
-    def _predict(self, observation: PyTorchObs, deterministic: bool = False) -> th.Tensor:
+    def _predict(self, observation: PyTorchObs, deterministic: bool = False, mask: List = None) -> th.Tensor:
         """
         Get the action according to the policy for a given observation.
 
@@ -724,11 +732,8 @@ class ActorCriticPolicy(BasePolicy):
         :param deterministic: Whether to use stochastic or deterministic actions
         :return: Taken action according to the policy
         """
-        tmp =self.get_distribution(observation).get_actions(deterministic=deterministic)
+        tmp =self.get_distribution(observation, mask=mask).get_actions(deterministic=deterministic)
 
-        f = open("D:\Projekty\STUDIA MAGISTERSKIE\MAGISTERKA\debug.txt", "w")
-        f.write(str(observation))
-        f.close()
         return tmp
 
 
@@ -758,7 +763,7 @@ class ActorCriticPolicy(BasePolicy):
 
         return values, log_prob, entropy
 
-    def get_distribution(self, obs: PyTorchObs) -> Distribution:
+    def get_distribution(self, obs: PyTorchObs, mask=None) -> Distribution:
         """
         Get the current policy distribution given the observations.
 
@@ -769,9 +774,14 @@ class ActorCriticPolicy(BasePolicy):
         latent_pi = self.mlp_extractor.forward_actor(features)
         tmp = self._get_action_dist_from_latent(latent_pi)
 
-        f = open("D:\Projekty\STUDIA MAGISTERSKIE\MAGISTERKA\debug1.txt", "w")
-        f.write(str(tmp))
-        f.close()
+        np.set_printoptions(precision=3)
+        if mask is not None: # and 0 not in [sum(agent) for agent in action_mask]:
+            mask = th.tensor(mask)
+            tmp.distribution.probs *= mask
+            tmp.distribution.probs = th.nn.functional.normalize(tmp.distribution.probs, p=1, dim=1)
+        # f = open("D:\Projekty\STUDIA MAGISTERSKIE\MAGISTERKA\probs.txt", "w")
+        np.save("D:\Projekty\STUDIA MAGISTERSKIE\MAGISTERKA\probs", tmp.distribution.probs.np())
+        # f.close()
 
         return tmp
 
