@@ -780,7 +780,7 @@ class ActorCriticPolicy(BasePolicy):
             tmp.distribution.probs *= mask
             tmp.distribution.probs = th.nn.functional.normalize(tmp.distribution.probs, p=1, dim=1)
         # f = open("D:\Projekty\STUDIA MAGISTERSKIE\MAGISTERKA\probs.txt", "w")
-        np.save("D:\Projekty\STUDIA MAGISTERSKIE\MAGISTERKA\probs", tmp.distribution.probs.np())
+        np.save("D:\Projekty\STUDIA MAGISTERSKIE\MAGISTERKA\probs", tmp.distribution.probs.numpy())
         # f.close()
 
         return tmp

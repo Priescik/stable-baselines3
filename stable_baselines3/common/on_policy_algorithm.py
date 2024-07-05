@@ -174,8 +174,12 @@ class OnPolicyAlgorithm(BaseAlgorithm):
                 # Sample a new noise matrix
                 self.policy.reset_noise(env.num_envs)
 
-            pre_infos = env.venv.venv.vec_envs[0].par_env.aec_env.infos
-            self.action_mask = [v["action_mask"] for k, v in pre_infos.items()]
+            try:  # for vec_env (PettingZoo) ; very inelegant
+                pre_infos = env.venv.venv.vec_envs[0].par_env.aec_env.infos
+                self.action_mask = [v["action_mask"] for k, v in pre_infos.items()]
+            except AttributeError:  # for Gym
+                pre_infos = env.envs[0].env.info
+                self.action_mask = [v["action_mask"] for k, v in pre_infos.items() if isinstance(v, dict) and 'action_mask' in v]
 
             with th.no_grad():
                 # Convert to pytorch tensor or to TensorDict
