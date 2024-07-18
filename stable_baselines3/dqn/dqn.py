@@ -231,6 +231,7 @@ class DQN(OffPolicyAlgorithm):
         state: Optional[Tuple[np.ndarray, ...]] = None,
         episode_start: Optional[np.ndarray] = None,
         deterministic: bool = False,
+        mask: List = None
     ) -> Tuple[np.ndarray, Optional[Tuple[np.ndarray, ...]]]:
         """
         Overrides the base_class predict function to include epsilon-greedy exploration.
@@ -252,7 +253,7 @@ class DQN(OffPolicyAlgorithm):
             else:
                 action = np.array(self.action_space.sample())
         else:
-            action, state = self.policy.predict(observation, state, episode_start, deterministic)
+            action, state = self.policy.predict(observation, state, episode_start, deterministic, mask=mask)
         return action, state
 
     def learn(

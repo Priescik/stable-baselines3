@@ -665,7 +665,8 @@ class ActorCriticPolicy(BasePolicy):
         try:
             actions = distribution.get_actions(deterministic=deterministic)
         except RuntimeError:
-            for i, agent_probs in distribution.distribution.probs:
+            print(f"possible error, action_mask:{action_mask}")
+            for i, agent_probs in enumerate(distribution.distribution.probs):
                 if sum(agent_probs) <= 0:
                     agent_probs += action_mask[i]
             actions = distribution.get_actions(deterministic=deterministic)

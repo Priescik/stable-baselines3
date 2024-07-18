@@ -65,9 +65,13 @@ class QNetwork(BasePolicy):
         """
         return self.q_net(self.extract_features(obs, self.features_extractor))
 
-    def _predict(self, observation: PyTorchObs, deterministic: bool = True) -> th.Tensor:
+    def _predict(self, observation: PyTorchObs, deterministic: bool = True, mask=None) -> th.Tensor: #
         q_values = self(observation)
         # Greedy action
+        if mask is not None:
+            mask = th.tensor(mask, dtype=th.bool)
+            zeros_tensor = th.full_like(q_values, -1)
+            q_values = th.where(mask, q_values, zeros_tensor)
         action = q_values.argmax(dim=1).reshape(-1)
         return action
 
@@ -180,8 +184,8 @@ class DQNPolicy(BasePolicy):
     def forward(self, obs: PyTorchObs, deterministic: bool = True) -> th.Tensor:
         return self._predict(obs, deterministic=deterministic)
 
-    def _predict(self, obs: PyTorchObs, deterministic: bool = True) -> th.Tensor:
-        return self.q_net._predict(obs, deterministic=deterministic)
+    def _predict(self, obs: PyTorchObs, deterministic: bool = True, mask=None) -> th.Tensor:
+        return self.q_net._predict(obs, deterministic=deterministic, mask=mask)
 
     def _get_constructor_parameters(self) -> Dict[str, Any]:
         data = super()._get_constructor_parameters()
