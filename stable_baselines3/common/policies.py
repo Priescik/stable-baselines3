@@ -737,6 +737,20 @@ class ActorCriticPolicy(BasePolicy):
 
         return tmp
 
+    def get_probs(self, observation: th.Tensor, mask: List = None) -> th.Tensor:
+        """
+        Get the action according to the policy for a given observation.
+
+        :param observation:
+        :param deterministic: Whether to use stochastic or deterministic actions
+        :return: Policy distribution for actions
+        """
+        obs_tensor, vectorized_env = self.obs_to_tensor(observation)
+        with th.no_grad():
+            tmp = self.get_distribution(obs_tensor, mask=mask)
+
+        return tmp.distribution.probs
+
 
     def evaluate_actions(self, obs: PyTorchObs, actions: th.Tensor) -> Tuple[th.Tensor, th.Tensor, Optional[th.Tensor]]:
         """

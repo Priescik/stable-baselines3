@@ -556,6 +556,19 @@ class BaseAlgorithm(ABC):
         """
         return self.policy.predict(observation, state, episode_start, deterministic, mask=mask)
 
+    def get_probs(
+        self,
+        observation: Union[np.ndarray, Dict[str, np.ndarray], th.Tensor],
+        state: Optional[Tuple[np.ndarray, ...]] = None,
+        episode_start: Optional[np.ndarray] = None,
+        deterministic: bool = False,
+        mask: List = None
+    ):
+        """
+        Function used by java-python communication module
+        """
+        return self.policy.get_probs(observation, mask=mask)
+
     def set_random_seed(self, seed: Optional[int] = None) -> None:
         """
         Set the seed of the pseudo-random generators
